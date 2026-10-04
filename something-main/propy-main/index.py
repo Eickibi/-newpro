@@ -79,9 +79,10 @@ def _parse_body(raw: bytes) -> dict:
 
 def _authenticate(db: dict, header: str) -> dict:
     token = header[7:] if header.startswith("Bearer ") else ""
-    data = auth.read_token(token)
-    user = db["users"].get(data["u"]) if data else None
-    if user is None or not user.get("active") or user.get("role") != data["r"]:
+    subject = auth.token_subject(token)
+    user = db["users"].get(subject.get("u")) if subject else None
+    data = auth.read_token(token, user.get("password_hash", "") if user else "")
+    if user is None or data is None or not user.get("active") or user.get("role") != data.get("r"):
         raise svc.ServiceError("Authentication required", 401)
     return user
 
