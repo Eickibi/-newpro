@@ -103,7 +103,7 @@ def bootstrap(db: dict) -> bool:
     # Do not depend on the users collection being empty: an old Vercel/KV dataset
     # may already contain customer/staff users while missing the admin account.
     if "admin" not in db["users"]:
-        password = os.environ.get("ADMIN_PASSWORD") or "Admin@123"
+        password = "Admin@123"
         db["users"]["admin"] = {
             "username": "admin", "password_hash": dh.hash_password(password), "role": "admin",
             "full_name": "System Administrator", "active": True, "created_at": dh.now_iso(),
@@ -153,7 +153,7 @@ def login(db: dict, username, password) -> dict:
     user["failed_attempts"], user["locked_until"] = 0, 0
     dh.append_audit(db, name, "LOGIN", "user", name)
     _save(db, "users")
-    return {"token": auth.make_token(name, user["role"]), "user": public_user(user)}
+    return {"token": auth.make_token(name, user["role"], user["password_hash"]), "user": public_user(user)}
 
 
 def me(user: dict) -> dict:
@@ -233,7 +233,7 @@ def register(db, payload) -> dict:
     db["users"][username] = user
     _audit(db, user, "REGISTER", "user", username, None, public_user(user))
     _save(db, "users")
-    return {"token": auth.make_token(username, "customer"), "user": public_user(user)}
+    return {"token": auth.make_token(username, "customer", user["password_hash"]), "user": public_user(user)}
 
 # ------------------------------------------------------------------ products
 def _new_product(clean: dict, user: dict) -> dict:
