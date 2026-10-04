@@ -1,0 +1,1 @@
+{"TRF-0001": {"id": "TRF-0001", "sku": "TEST-LOT", "from_warehouse": "MAIN", "to_warehouse": "W2", "quantity": 5, "reason": "test", "user": "admin", "timestamp": "2026-10-04T09:16:04+00:00"}}
