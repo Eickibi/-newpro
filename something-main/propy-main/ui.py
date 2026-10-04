@@ -33,7 +33,6 @@ dialog menu{display:flex;gap:8px;justify-content:flex-end;padding:0}#toast{posit
 <script>
 const S={token:sessionStorage.getItem('t')||'',me:null,page:'',Q:{}};
 function showAuth(page){$('#app').hidden=true;$('#login').hidden=page!=='login';$('#register').hidden=page!=='register';}
-window.addEventListener('hashchange',()=>{if(!S.me)showAuth(location.hash==='#register'?'register':'login')});
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -130,14 +129,15 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(a&
 
 function logout(){S.token='';S.me=null;sessionStorage.removeItem('t');location.hash='login';showAuth('login')}
 async function enter(){S.me=await api('/me');$('#register').hidden=true;$('#login').hidden=true;$('#app').hidden=false;$('#who').textContent=`${S.me.user.username} (${S.me.user.role})`;
-  const items=NAV.filter(n=>can(n[2]));$('#nav').innerHTML=items.map(n=>`<button data-n="${n[0]}">${n[1]}</button>`).join('');nav(items[0][0])}
+  const items=NAV.filter(n=>can(n[2]));$('#nav').innerHTML=items.map(n=>`<button data-n="${n[0]}">${n[1]}</button>`).join('');
+  nav(items.some(n=>n[0]==='products')?'products':items[0][0])}
 $('#login').onsubmit=guard(async e=>{e.preventDefault();const r=await api('/login','POST',{username:val('lu'),password:val('lp')});S.token=r.token;sessionStorage.setItem('t',r.token);$('#lp').value='';await enter()});
 $('#out').onclick=logout;
-$('#showreg').onclick=()=>{location.hash='register';showAuth('register')};
-$('#backlogin').onclick=()=>{location.hash='login';showAuth('login')};
+$('#showreg').onclick=()=>showAuth('register');
+$('#backlogin').onclick=()=>showAuth('login');
 $('#register').onsubmit=guard(async e=>{e.preventDefault();if(val('rp')!==val('rc'))throw new Error('Passwords do not match');const r=await api('/register','POST',{username:val('ru'),full_name:val('rn'),password:val('rp')});S.token=r.token;sessionStorage.setItem('t',S.token);await enter()});
 $('#pw').onclick=guard(async()=>{const v=await ask('Change password',[{n:'old_password',l:'Current password',t:'password'},{n:'new_password',l:'New password',t:'password'}]);if(v){await api('/password','POST',v);toast('Password changed')}});
-if(S.token)guard(enter)().then(()=>{if(!S.me)logout()});else showAuth(location.hash==='#register'?'register':'login');
+if(S.token)guard(enter)().then(()=>{if(!S.me)logout()});else showAuth('login');
 </script>
 </body>
 </html>
