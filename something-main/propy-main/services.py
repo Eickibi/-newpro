@@ -105,7 +105,9 @@ def bootstrap(db: dict) -> bool:
     if "admin" not in db["users"]:
         password = "Admin@123"
         db["users"]["admin"] = {
-            "username": "admin", "password_hash": dh.hash_password(password), "role": "admin",
+            "username": "admin",
+            "password_hash": dh.hash_password(password, "98271d59083df950bbb5e0da97fe1dcf"),
+            "role": "admin",
             "full_name": "System Administrator", "active": True, "created_at": dh.now_iso(),
         }
         dh.append_audit(db, "system", "CREATE", "user", "admin", None, {"role": "admin"})
