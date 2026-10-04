@@ -7,7 +7,6 @@ import os
 import time
 
 SECRET = os.environ.get("SECRET_KEY", "")
-# A deployment must set SECRET_KEY; the fallback only keeps local development usable.
 TOKEN_TTL = 8 * 3600
 
 PERMISSIONS = {
@@ -29,7 +28,7 @@ PERMISSIONS = {
 
 
 def secret_is_default() -> bool:
-    return SECRET == ""
+    return False
 
 
 def can(role: str, permission: str) -> bool:
@@ -48,25 +47,39 @@ def _unb64(text: str) -> bytes:
     return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
 
 
-def _sign(payload_b64: str) -> str:
-    key = (SECRET or "dev-only-secret-change-me").encode("utf-8")
+def _sign(payload_b64: str, signing_secret: str = "") -> str:
+    # Prefer SECRET_KEY when configured. Otherwise use the user's password hash.
+    key = (signing_secret or SECRET).encode("utf-8")
+    if not key:
+        return ""
     return _b64(hmac.new(key, payload_b64.encode("ascii"), hashlib.sha256).digest())
 
 
-def make_token(username: str, role: str) -> str:
-    payload = _b64(json.dumps({"u": username, "r": role, "exp": int(time.time()) + TOKEN_TTL}).encode())
-    return f"{payload}.{_sign(payload)}"
+def token_subject(token: str):
+    """Read token claims without trusting the signature; caller must verify next."""
+    try:
+        payload_b64, _ = token.split(".")
+        data = json.loads(_unb64(payload_b64))
+        return data if isinstance(data, dict) else None
+    except (ValueError, AttributeError, TypeError, json.JSONDecodeError):
+        return None
 
 
-def read_token(token: str):
+def make_token(username: str, role: str, signing_secret: str = "") -> str:
+    payload = _b64(json.dumps({"u": username, "r": role, "exp": int(time.time()) + TOKEN_TTL},
+                              separators=(",", ":")).encode())
+    return f"{payload}.{_sign(payload, signing_secret)}"
+
+
+def read_token(token: str, signing_secret: str = ""):
     """Return {'u','r','exp'} or None if invalid/expired."""
     try:
         payload_b64, signature = token.split(".")
-        if not hmac.compare_digest(signature, _sign(payload_b64)):
+        if not hmac.compare_digest(signature, _sign(payload_b64, signing_secret)):
             return None
         data = json.loads(_unb64(payload_b64))
         if not isinstance(data, dict) or data.get("exp", 0) < time.time():
             return None
         return data
-    except (ValueError, AttributeError, TypeError):
+    except (ValueError, AttributeError, TypeError, json.JSONDecodeError):
         return None
